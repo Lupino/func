@@ -38,7 +38,7 @@ import           Data.IORef                      (IORef, atomicWriteIORef,
                                                   newIORef, readIORef)
 
 import           Prelude                         hiding (log)
-import           System.Logger                   (Level (Error), Logger,
+import           System.Logger                   (Level (Error, Info), Logger,
                                                   Output (StdErr), create, log,
                                                   msg)
 
@@ -159,7 +159,7 @@ processHandler handle = do
 -- |re-sync running supervisors, wait for the HUP TVar, then repeat!
 monitorConfig :: Logger -> String -> ProcHandle -> TVar (Maybe Int) -> IO ()
 monitorConfig logger configPath handle wakeSig = do
-  log logger Error (msg ("HUP caught, reloading config" :: String))
+  log logger Info (msg ("HUP caught, reloading config" :: String))
   mspec <- decodeFile configPath :: IO (Maybe [Proc])
   case mspec of
       Nothing -> log logger Error (msg ("<<<< Config Error >>>>" :: String))
@@ -200,4 +200,4 @@ processSignal configPath handle = do
 
   void $ takeMVar bye
 
-  log logger Error (msg ("INT | TERM received; initiating shutdown..." :: String))
+  log logger Info (msg ("INT | TERM received; initiating shutdown..." :: String))
