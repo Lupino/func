@@ -14,13 +14,11 @@ import           Web.Scotty                      (ActionM, ScottyM, body, param,
 import           Data.Aeson                      (FromJSON, parseJSON,
                                                   withObject, (.!=), (.:),
                                                   (.:?))
-import qualified Data.ByteString.Lazy            as LB (ByteString, empty,
-                                                        hGetContents, hPut,
-                                                        null)
+import qualified Data.ByteString.Lazy.Char8      as LB (ByteString, empty, pack,
+                                                        unpack)
 import           Data.Text.Lazy                  (Text)
-import           System.Process                  (StdStream (..), proc, std_err,
-                                                  std_in, std_out,
-                                                  withCreateProcess)
+import           System.Exit                     (ExitCode (..))
+import           System.Process                  (readProcessWithExitCode)
 
 import           Control.Concurrent              (forkIO)
 import           Control.Concurrent.MVar         (MVar, newEmptyMVar, putMVar,
@@ -106,16 +104,11 @@ instance FromJSON Proc where
     return Proc {..}
 
 runProc :: Proc -> LB.ByteString -> IO (Either LB.ByteString LB.ByteString)
-runProc (Proc { procName = name, procArgv = argv }) rb =
-  withCreateProcess (proc name argv) { std_out = CreatePipe
-                                     , std_err = CreatePipe
-                                     , std_in  = CreatePipe
-                                     } $ \(Just hin) (Just hout) (Just herr) _ -> do
-    LB.hPut hin rb
-    out <- LB.hGetContents hout
-    err <- LB.hGetContents herr
-    if LB.null err then return (Right out)
-                   else return (Left out)
+runProc (Proc { procName = name, procArgv = argv }) rb = do
+  (code, out, err) <- readProcessWithExitCode name argv (LB.unpack rb)
+  case code of
+    ExitSuccess   -> return (Right $ LB.pack out)
+    ExitFailure _ -> return (Left $ LB.pack err)
 
 newtype ProcHandle = ProcHandle (IORef [Proc])
 
