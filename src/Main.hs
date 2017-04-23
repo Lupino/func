@@ -10,13 +10,14 @@ import           Network.Wai.Handler.Warp        (setHost, setPort)
 import           Web.Scotty                      (ActionM, ScottyM, body, param,
                                                   post, raw, scottyOpts,
                                                   setHeader, settings, status)
+import qualified Web.Scotty                      as S (header)
 
 import           Data.Aeson                      (FromJSON, parseJSON,
                                                   withObject, (.!=), (.:),
                                                   (.:?))
 import qualified Data.ByteString.Lazy.Char8      as LB (ByteString, empty, pack,
                                                         unpack)
-import           Data.Text.Lazy                  (Text)
+import qualified Data.Text.Lazy                  as LT (Text, null)
 import           System.Exit                     (ExitCode (..))
 import           System.Process                  (readProcessWithExitCode)
 
@@ -97,7 +98,7 @@ type FuncName = String
 data Proc = Proc { procFuncName    :: FuncName
                  , procName        :: String
                  , procArgv        :: [String]
-                 , procContentType :: Text
+                 , procContentType :: LT.Text
                  }
 
 instance FromJSON Proc where
@@ -105,7 +106,7 @@ instance FromJSON Proc where
     procFuncName    <- o .:  "func"
     procName        <- o .:  "proc"
     procArgv        <- o .:? "argv"         .!= []
-    procContentType <- o .:? "content-type" .!= "plain/text"
+    procContentType <- o .:? "content-type" .!= ""
     return Proc {..}
 
 runProc :: Proc -> LB.ByteString -> IO (Either LB.ByteString LB.ByteString)
@@ -150,7 +151,13 @@ processHandler handle = do
           status status500
           raw err
         Right dat -> do
-          setHeader "Content-Type" (procContentType p)
+          if LT.null (procContentType p) then
+            setHeader "Content-Type" (procContentType p)
+          else do
+            ct <- S.header "Content-Type"
+            case ct of
+              Nothing  -> return ()
+              Just ct' -> setHeader "Content-Type" ct'
           raw dat
 
 -- |read the config file, update shared state with current spec,
