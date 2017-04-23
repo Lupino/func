@@ -36,9 +36,14 @@ import           Data.IORef                      (IORef, atomicWriteIORef,
                                                   newIORef, readIORef)
 
 import           Prelude                         hiding (log)
-import qualified System.Logger                   as L (Logger, Output (StdErr),
+import qualified System.Logger                   as L (DateFormat (..), Logger,
+                                                       Output (StdErr),
                                                        defSettings, err, info,
-                                                       msg, new, setOutput)
+                                                       msg, new, setFormat,
+                                                       setOutput)
+
+import           Data.UnixTime                   (formatUnixTime)
+import           System.IO.Unsafe                (unsafePerformIO)
 
 
 import           Data.Semigroup                  ((<>))
@@ -176,6 +181,9 @@ handleHup wakeSig = atomically $ writeTVar wakeSig $ Just 1
 handleExit :: MVar Bool -> IO ()
 handleExit mv = putMVar mv True
 
+format :: L.DateFormat
+format = L.DateFormat $ \u -> unsafePerformIO $ formatUnixTime "%Y-%m-%d %H:%M:%S" u
+
 processSignal :: String -> ProcHandle -> IO ()
 processSignal configPath handle = do
   -- The wake signal, set by the HUP handler to wake the monitor loop
@@ -187,7 +195,7 @@ processSignal configPath handle = do
   void $ installHandler sigTERM (Catch $ handleExit bye) Nothing
   void $ installHandler sigINT (Catch $ handleExit bye) Nothing
 
-  logger <- L.new . L.setOutput L.StdErr $ L.defSettings
+  logger <- L.new . L.setOutput L.StdErr . L.setFormat (Just format) $ L.defSettings
   -- Finally, run the config load/monitor thread
   void . forkIO $ forever $ monitorConfig logger configPath handle wakeSig
 
