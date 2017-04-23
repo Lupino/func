@@ -1,0 +1,3 @@
+- func: java
+  proc: java
+  argv: ["-cp", "base/java", "Handler"]

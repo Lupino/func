@@ -1,0 +1,3 @@
+- func: python
+  proc: python
+  argv: ["base/python/handler.py"]

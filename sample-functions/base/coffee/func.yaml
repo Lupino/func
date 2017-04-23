@@ -1,0 +1,3 @@
+- func: coffee
+  proc: coffee
+  argv: ["base/coffee/handler.coffee"]

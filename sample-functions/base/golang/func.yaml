@@ -1,0 +1,2 @@
+- func: golang
+  proc: ./base/golang/golang

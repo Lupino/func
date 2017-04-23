@@ -1,0 +1,3 @@
+- func: resize
+  proc: convert
+  argv: ["-", "-resize", "50%", "fd:1"]

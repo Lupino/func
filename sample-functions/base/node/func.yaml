@@ -1,0 +1,3 @@
+- func: node
+  proc: node
+  argv: ["base/node/handler.js"]
