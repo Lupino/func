@@ -17,7 +17,7 @@ import           Data.Aeson                      (FromJSON, parseJSON,
                                                   (.:?))
 import qualified Data.ByteString.Lazy.Char8      as LB (ByteString, empty, pack,
                                                         unpack)
-import qualified Data.Text.Lazy                  as LT (Text, null)
+import qualified Data.Text.Lazy                  as LT (Text, empty, length)
 import           System.Exit                     (ExitCode (..))
 import           System.Process                  (readProcessWithExitCode)
 
@@ -106,7 +106,7 @@ instance FromJSON Proc where
     procFuncName    <- o .:  "func"
     procName        <- o .:  "proc"
     procArgv        <- o .:? "argv"         .!= []
-    procContentType <- o .:? "content-type" .!= ""
+    procContentType <- o .:? "content-type" .!= LT.empty
     return Proc {..}
 
 runProc :: Proc -> LB.ByteString -> IO (Either LB.ByteString LB.ByteString)
@@ -151,7 +151,7 @@ processHandler handle = do
           status status500
           raw err
         Right dat -> do
-          if LT.null (procContentType p) then
+          if LT.length (procContentType p) > 0 then
             setHeader "Content-Type" (procContentType p)
           else do
             ct <- S.header "Content-Type"
