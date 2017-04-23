@@ -1,0 +1,12 @@
+- func: echoit
+  proc: cat
+
+- func: wordcount
+  proc: wc
+
+- func: base64
+  proc: base64
+
+- func: decodebase64
+  proc: base64
+  argv: ["-d"]
