@@ -36,9 +36,9 @@ import           Data.IORef                      (IORef, atomicWriteIORef,
                                                   newIORef, readIORef)
 
 import           Prelude                         hiding (log)
-import           System.Logger                   (Level (Error, Info), Logger,
-                                                  Output (StdErr), create, log,
-                                                  msg)
+import qualified System.Logger                   as L (Logger, Output (StdErr),
+                                                       defSettings, err, info,
+                                                       msg, new, setOutput)
 
 
 import           Data.Semigroup                  ((<>))
@@ -150,12 +150,12 @@ processHandler handle = do
 
 -- |read the config file, update shared state with current spec,
 -- |re-sync running supervisors, wait for the HUP TVar, then repeat!
-monitorConfig :: Logger -> String -> ProcHandle -> TVar (Maybe Int) -> IO ()
+monitorConfig :: L.Logger -> String -> ProcHandle -> TVar (Maybe Int) -> IO ()
 monitorConfig logger configPath handle wakeSig = do
-  log logger Info (msg ("HUP caught, reloading config" :: String))
+  L.info logger (L.msg ("HUP caught, reloading config" :: String))
   mspec <- decodeFile configPath :: IO (Maybe [Proc])
   case mspec of
-      Nothing -> log logger Error (msg ("<<<< Config Error >>>>" :: String))
+      Nothing    -> L.err logger (L.msg ("<<<< Config Error >>>>" :: String))
       Just procs -> updateProcHandle handle procs
 
   waitForWake wakeSig
@@ -187,10 +187,10 @@ processSignal configPath handle = do
   void $ installHandler sigTERM (Catch $ handleExit bye) Nothing
   void $ installHandler sigINT (Catch $ handleExit bye) Nothing
 
-  logger <- create StdErr
+  logger <- L.new . L.setOutput L.StdErr $ L.defSettings
   -- Finally, run the config load/monitor thread
   void . forkIO $ forever $ monitorConfig logger configPath handle wakeSig
 
   void $ takeMVar bye
 
-  log logger Info (msg ("INT | TERM received; initiating shutdown..." :: String))
+  L.info logger (L.msg ("INT | TERM received; initiating shutdown..." :: String))
