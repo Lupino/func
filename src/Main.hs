@@ -15,11 +15,10 @@ import qualified Web.Scotty                      as S (header)
 import           Data.Aeson                      (FromJSON, parseJSON,
                                                   withObject, (.!=), (.:),
                                                   (.:?))
-import qualified Data.ByteString.Lazy.Char8      as LB (ByteString, empty, pack,
-                                                        unpack)
+import qualified Data.ByteString.Lazy            as LB (ByteString, empty)
 import qualified Data.Text.Lazy                  as LT (Text, empty, length)
 import           System.Exit                     (ExitCode (..))
-import           System.Process                  (readProcessWithExitCode)
+import           System.Process.ByteString.Lazy  (readProcessWithExitCode)
 
 import           Control.Concurrent              (forkIO)
 import           Control.Concurrent.MVar         (MVar, newEmptyMVar, putMVar,
@@ -111,10 +110,10 @@ instance FromJSON Proc where
 
 runProc :: Proc -> LB.ByteString -> IO (Either LB.ByteString LB.ByteString)
 runProc (Proc { procName = name, procArgv = argv }) rb = do
-  (code, out, err) <- readProcessWithExitCode name argv (LB.unpack rb)
+  (code, out, err) <- readProcessWithExitCode name argv rb
   case code of
-    ExitSuccess   -> return (Right $ LB.pack out)
-    ExitFailure _ -> return (Left $ LB.pack err)
+    ExitSuccess   -> return (Right out)
+    ExitFailure _ -> return (Left err)
 
 newtype ProcHandle = ProcHandle (IORef [Proc])
 
