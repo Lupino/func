@@ -16,6 +16,7 @@ import           Data.Aeson                      (FromJSON, parseJSON,
                                                   withObject, (.!=), (.:),
                                                   (.:?))
 import qualified Data.ByteString.Lazy            as LB (ByteString, empty)
+import           Data.Foldable                   (forM_)
 import qualified Data.Text.Lazy                  as LT (Text, empty, length)
 import           System.Exit                     (ExitCode (..))
 import           System.Process.ByteString.Lazy  (readProcessWithExitCode)
@@ -80,7 +81,7 @@ main = execParser opts >>= program
      <> header "func - Function as a service" )
 
 program :: Options -> IO ()
-program (Options {getHost = host, getPort = port, getConfigPath = configPath}) = do
+program Options{getHost = host, getPort = port, getConfigPath = configPath} = do
   handle <- newProcHandle
   void . forkIO $ scottyOpts opts (application handle)
 
@@ -89,7 +90,7 @@ program (Options {getHost = host, getPort = port, getConfigPath = configPath}) =
   where opts = def { settings = setPort port $ setHost (Host host) (settings def) }
 
 application :: ProcHandle -> ScottyM ()
-application handle = do
+application handle =
   post "/function/:func" (processHandler handle)
 
 type FuncName = String
@@ -109,7 +110,7 @@ instance FromJSON Proc where
     return Proc {..}
 
 runProc :: Proc -> LB.ByteString -> IO (Either LB.ByteString LB.ByteString)
-runProc (Proc { procName = name, procArgv = argv }) rb = do
+runProc Proc{procName = name, procArgv = argv} rb = do
   (code, out, err) <- readProcessWithExitCode name argv rb
   case code of
     ExitSuccess   -> return (Right out)
@@ -129,7 +130,7 @@ getProc (ProcHandle ref) func = go <$> readIORef ref
                   | otherwise              = go xs
 
 updateProcHandle :: ProcHandle -> [Proc] -> IO ()
-updateProcHandle (ProcHandle ref) procs = atomicWriteIORef ref procs
+updateProcHandle (ProcHandle ref) = atomicWriteIORef ref
 
 
 processHandler :: ProcHandle -> ActionM ()
@@ -154,9 +155,7 @@ processHandler handle = do
             setHeader "Content-Type" (procContentType p)
           else do
             ct <- S.header "Content-Type"
-            case ct of
-              Nothing  -> return ()
-              Just ct' -> setHeader "Content-Type" ct'
+            forM_ ct (setHeader "Content-Type")
           raw dat
 
 -- |read the config file, update shared state with current spec,
