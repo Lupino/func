@@ -27,7 +27,7 @@ import           Control.Concurrent.MVar         (MVar, newEmptyMVar, putMVar,
 import           Control.Concurrent.STM          (TVar, atomically, newTVarIO,
                                                   readTVar, retry, writeTVar)
 import           Control.Monad                   (forever, void)
-import           Data.Yaml                       (decodeFile)
+import           Data.Yaml                       (decodeFileEither)
 import           System.Posix.Signals            (Handler (Catch),
                                                   installHandler, sigHUP,
                                                   sigINT, sigTERM)
@@ -36,7 +36,7 @@ import           Control.Monad.IO.Class          (liftIO)
 import           Data.IORef                      (IORef, atomicWriteIORef,
                                                   newIORef, readIORef)
 
-import           Prelude                         hiding (log)
+import           Prelude
 import qualified System.Logger                   as L (DateFormat (..), Logger,
                                                        Output (StdErr),
                                                        defSettings, err, info,
@@ -163,10 +163,10 @@ processHandler handle = do
 monitorConfig :: L.Logger -> String -> ProcHandle -> TVar (Maybe Int) -> IO ()
 monitorConfig logger configPath handle wakeSig = do
   L.info logger (L.msg ("HUP caught, reloading config" :: String))
-  mspec <- decodeFile configPath :: IO (Maybe [Proc])
+  mspec <- decodeFileEither configPath
   case mspec of
-      Nothing    -> L.err logger (L.msg ("<<<< Config Error >>>>" :: String))
-      Just procs -> updateProcHandle handle procs
+    Left e      -> L.err logger (L.msg ("<<<< Config Error >>>>" ++ show e))
+    Right procs -> updateProcHandle handle procs
 
   waitForWake wakeSig
 
